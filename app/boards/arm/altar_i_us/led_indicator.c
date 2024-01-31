@@ -37,7 +37,7 @@ static int indicator_callback() {
         return ZMK_EV_EVENT_BUBBLE;
     }
 
-    zmk_hid_indicators indicators = zmk_hid_indicators_get_current_profile();
+    zmk_hid_indicators_t indicators = zmk_hid_indicators_get_current_profile();
 
     if (indicators & CAPS_LOCK_MASK) {
         led_on(led_dev, 0);
