@@ -524,6 +524,65 @@ zmk_studio_Response set_layer_props(const zmk_studio_Request *req) {
     return KEYMAP_RESPONSE(set_layer_props, resp);
 }
 
+zmk_studio_Response layer_active(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_layer_id_t layer_id =
+        (zmk_keymap_layer_id_t)req->subsystem.keymap.request_type.layer_active;
+
+    bool resp = zmk_keymap_layer_active(layer_id);
+
+    return KEYMAP_RESPONSE(layer_active, resp);
+}
+
+zmk_studio_Response layer_locked(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_layer_id_t layer_id =
+        (zmk_keymap_layer_id_t)req->subsystem.keymap.request_type.layer_locked;
+
+    bool resp = zmk_keymap_layer_locked(layer_id);
+
+    return KEYMAP_RESPONSE(layer_locked, resp);
+}
+
+zmk_studio_Response layer_activate(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_LayerActivationRequest *set_req =
+        &req->subsystem.keymap.request_type.layer_activate;
+
+    uint32_t resp = zmk_keymap_layer_activate(set_req->layer_id, set_req->locking);
+
+    return KEYMAP_RESPONSE(layer_activate, resp);
+}
+
+zmk_studio_Response layer_deactivate(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_LayerActivationRequest *set_req =
+        &req->subsystem.keymap.request_type.layer_deactivate;
+
+    uint32_t resp = zmk_keymap_layer_deactivate(set_req->layer_id, set_req->locking);
+
+    return KEYMAP_RESPONSE(layer_deactivate, resp);
+}
+
+zmk_studio_Response layer_toggle(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_LayerActivationRequest *set_req =
+        &req->subsystem.keymap.request_type.layer_toggle;
+
+    uint32_t resp = zmk_keymap_layer_toggle(set_req->layer_id, set_req->locking);
+
+    return KEYMAP_RESPONSE(layer_toggle, resp);
+}
+
+zmk_studio_Response layer_to(const zmk_studio_Request *req) {
+    LOG_DBG("");
+    const zmk_keymap_LayerActivationRequest *set_req = &req->subsystem.keymap.request_type.layer_to;
+
+    uint32_t resp = zmk_keymap_layer_to(set_req->layer_id, set_req->locking);
+
+    return KEYMAP_RESPONSE(layer_to, resp);
+}
+
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, get_keymap, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, set_layer_binding, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, check_unsaved_changes, ZMK_STUDIO_RPC_HANDLER_SECURED);
@@ -536,6 +595,12 @@ ZMK_RPC_SUBSYSTEM_HANDLER(keymap, add_layer, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, remove_layer, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, restore_layer, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(keymap, set_layer_props, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_active, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_locked, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_activate, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_deactivate, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_toggle, ZMK_STUDIO_RPC_HANDLER_SECURED);
+ZMK_RPC_SUBSYSTEM_HANDLER(keymap, layer_to, ZMK_STUDIO_RPC_HANDLER_SECURED);
 
 static int event_mapper(const zmk_event_t *eh, zmk_studio_Notification *n) { return 0; }
 
