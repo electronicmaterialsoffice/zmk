@@ -56,7 +56,11 @@ zmk_studio_Response haptics_is_on(const zmk_studio_Request *req) {
 zmk_studio_Response haptics_get_rated_voltage(const zmk_studio_Request *req) {
     LOG_DBG("");
 
-    uint8_t rated_voltage = altar_ii_haptics_get_rated_voltage();
+    uint8_t rated_voltage = 0;
+    int ret = altar_ii_haptics_get_rated_voltage(&rated_voltage);
+    if (ret != 0) {
+        return ZMK_RPC_SIMPLE_ERR(GENERIC);
+    }
     return HAPTICS_RESPONSE(haptics_get_rated_voltage, rated_voltage);
 }
 
