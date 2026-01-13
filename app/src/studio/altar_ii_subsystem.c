@@ -9,7 +9,7 @@
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_STUDIO_LOG_LEVEL);
 
 #include <altar_ii/peripherals/altar_ii_als.h>
-#include <altar_ii/peripherals/altar_ii_audio.h>
+#include <altar_ii/peripherals/audio/altar_ii_audio.h>
 #include <altar_ii/peripherals/altar_ii_haptics.h>
 #include <altar_ii/peripherals/altar_ii_indicators.h>
 #include <zmk/studio/rpc.h>
