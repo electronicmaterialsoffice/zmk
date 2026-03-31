@@ -421,6 +421,23 @@ static bool is_ble_ready(void) {
 #endif
 }
 
+#if IS_ENABLED(CONFIG_ZMK_ENDPOINT_DISABLE_FALLBACK)
+static enum zmk_transport get_selected_transport(void) {
+    switch (preferred_transport) {
+    case ZMK_TRANSPORT_NONE:
+        return ZMK_TRANSPORT_NONE;
+
+    case ZMK_TRANSPORT_BLE:
+        return is_ble_ready() ? ZMK_TRANSPORT_BLE : ZMK_TRANSPORT_NONE;
+
+    case ZMK_TRANSPORT_USB:
+        return is_usb_ready() ? ZMK_TRANSPORT_USB : ZMK_TRANSPORT_NONE;
+    }
+
+    LOG_ERR("Unknown transport %d", preferred_transport);
+    return ZMK_TRANSPORT_NONE;
+}
+#else
 static enum zmk_transport get_selected_transport(void) {
     switch (preferred_transport) {
     case ZMK_TRANSPORT_NONE:
@@ -453,6 +470,7 @@ static enum zmk_transport get_selected_transport(void) {
     LOG_DBG("Preferred endpoint transport is %d but no transports are ready", preferred_transport);
     return ZMK_TRANSPORT_NONE;
 }
+#endif // IS_ENABLED(CONFIG_ZMK_ENDPOINT_DISABLE_FALLBACK)
 
 static struct zmk_endpoint_instance get_selected_instance(void) {
     return get_instance_from_transport(get_selected_transport());
