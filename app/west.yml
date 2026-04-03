@@ -4,10 +4,12 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: zmkfirmware
       url-base: https://github.com/zmkfirmware
+    - name: electronicmaterialsoffice
+      url-base: https://github.com/electronicmaterialsoffice
   projects:
     - name: zephyr
-      remote: zmkfirmware
-      revision: v4.1.0+zmk-fixes
+      remote: electronicmaterialsoffice
+      revision: v4.1.0-electronicmaterialsoffice
       clone-depth: 1
       import:
         name-blocklist:
@@ -22,8 +24,6 @@ manifest:
           - hal_st
           - hal_ti
           - loramac-node
-          - mcuboot
-          - mcumgr
           - net-tools
           - openthread
           - edtt
