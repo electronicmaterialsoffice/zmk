@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Electronic Materials Office Limited
+# SPDX-License-Identifier: MIT
+
+description: |
+  Magdial rotate dispatch: taps the RPC-configured cw/ccw behavior binding
+  once per detent trigger. Bind as the default layer's sensor-binding so
+  higher layers' own sensor-bindings still preempt it.
+
+compatible: "zmk,behavior-magdial-rotate"
+
+properties:
+  "#sensor-binding-cells":
+    type: int
+    required: true
+    const: 0
+  tap-ms:
+    type: int
+    default: 10

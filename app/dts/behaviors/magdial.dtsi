@@ -1,0 +1,19 @@
+/*
+ * Copyright (c) 2026 Electronic Materials Office Limited
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/ {
+    behaviors {
+        /omit-if-no-ref/ magd_rotate: magdial_rotate {
+            compatible = "zmk,behavior-magdial-rotate";
+            #sensor-binding-cells = <0>;
+        };
+
+        /omit-if-no-ref/ magd_press: magdial_press {
+            compatible = "zmk,behavior-magdial-press";
+            #binding-cells = <0>;
+        };
+    };
+};

@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Electronic Materials Office Limited
+# SPDX-License-Identifier: MIT
+
+description: |
+  Magdial press dispatch: single / double / triple tap and long press each
+  tap their RPC-configured behavior binding. Bind at the dial's push-button
+  keymap position.
+
+compatible: "zmk,behavior-magdial-press"
+
+include: zero_param.yaml
+
+properties:
+  tapping-term-ms:
+    type: int
+    default: 250
+  hold-ms:
+    type: int
+    default: 500
+  tap-ms:
+    type: int
+    default: 30
