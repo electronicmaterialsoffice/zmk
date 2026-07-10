@@ -18,6 +18,7 @@
 #include <zmk/usb.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
+#include <zmk/events/backlight_state_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -104,11 +105,18 @@ static int zmk_backlight_init(void) {
     return zmk_backlight_update();
 }
 
+static void backlight_raise_state_changed(void) {
+    raise_zmk_backlight_state_changed(
+        (struct zmk_backlight_state_changed){.on = state.on, .brightness = state.brightness});
+}
+
 static int zmk_backlight_update_and_save(void) {
     int rc = zmk_backlight_update();
     if (rc != 0) {
         return rc;
     }
+
+    backlight_raise_state_changed();
 
 #if IS_ENABLED(CONFIG_SETTINGS)
     int ret = k_work_reschedule(&backlight_save_work, K_MSEC(CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE));
@@ -116,6 +124,17 @@ static int zmk_backlight_update_and_save(void) {
 #else
     return 0;
 #endif
+}
+
+int zmk_backlight_reset_settings(void) {
+#if IS_ENABLED(CONFIG_SETTINGS)
+    settings_delete("backlight/state");
+#endif
+    state.brightness = CONFIG_ZMK_BACKLIGHT_BRT_START;
+    state.on = IS_ENABLED(CONFIG_ZMK_BACKLIGHT_ON_START);
+    int rc = zmk_backlight_update();
+    backlight_raise_state_changed();
+    return rc;
 }
 
 int zmk_backlight_on(void) {
