@@ -109,6 +109,15 @@ config ZMK_STUDIO_RPC_TX_BUF_SIZE
     int "TX Buffer Size"
     default 64
 
+config ZMK_MAGDIAL
+    bool "Magdial runtime dial configuration"
+    default y
+    depends on DT_HAS_ZMK_BEHAVIOR_MAGDIAL_ROTATE_ENABLED
+    help
+      Persisted, Studio-RPC-configurable dial rotation/press actions and
+      rotation sensitivity, dispatched at runtime by the magdial rotate and
+      press behaviors.
+
 endif
 
 endif

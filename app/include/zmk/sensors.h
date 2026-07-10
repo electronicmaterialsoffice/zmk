@@ -20,6 +20,11 @@
 
 const struct zmk_sensor_config *zmk_sensors_get_config_at_index(uint8_t sensor_index);
 
+// Override the runtime triggers-per-rotation for a sensor. The backing config
+// array is mutable RAM read fresh on every rotate event, so this takes effect
+// immediately. Returns -EINVAL for an out-of-range index.
+int zmk_sensors_set_triggers_per_rotation(uint8_t sensor_index, uint16_t triggers_per_rotation);
+
 struct zmk_sensor_config {
     uint16_t triggers_per_rotation;
 };

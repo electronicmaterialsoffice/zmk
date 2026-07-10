@@ -63,6 +63,15 @@ const struct zmk_sensor_config *zmk_sensors_get_config_at_index(uint8_t sensor_i
     return &configs[sensor_index];
 }
 
+int zmk_sensors_set_triggers_per_rotation(uint8_t sensor_index, uint16_t triggers_per_rotation) {
+    if (sensor_index >= ARRAY_SIZE(configs)) {
+        return -EINVAL;
+    }
+
+    configs[sensor_index].triggers_per_rotation = triggers_per_rotation;
+    return 0;
+}
+
 static void trigger_sensor_data_for_position(uint32_t sensor_index) {
     int err;
     const struct sensors_item_cfg *item = &sensors[sensor_index];
