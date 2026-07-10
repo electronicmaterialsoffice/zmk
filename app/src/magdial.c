@@ -38,6 +38,12 @@ static struct magdial_state state = {
 
 static bool state_stale = false;
 
+// Guards `state`: the Studio RPC thread (lowest priority) writes it while the
+// dial behaviors read it from the higher-priority system workqueue. Critical
+// sections hold only plain memory copies — flash writes and behavior-registry
+// lookups stay outside the lock.
+static struct k_spinlock state_lock;
+
 // Factory defaults are stored as behavior *names* and resolved lazily —
 // local ids are only assigned once settings have loaded, and a board whose
 // keymap lacks one of these behaviors degrades to an empty slot.
@@ -89,14 +95,24 @@ static void magdial_apply_sensitivity(void) {}
 
 #endif // ZMK_KEYMAP_HAS_SENSORS
 
-bool zmk_magdial_press_enabled(void) { return state.press_enabled; }
+bool zmk_magdial_press_enabled(void) {
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
+    bool enabled = state.press_enabled;
+    k_spin_unlock(&state_lock, key);
+    return enabled;
+}
 
 bool zmk_magdial_resolve_slot(enum zmk_magdial_slot slot, struct zmk_behavior_binding *out) {
     if (slot >= ZMK_MAGDIAL_SLOT_COUNT) {
         return false;
     }
 
-    if (state.version == 0) {
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
+    uint8_t version = state.version;
+    struct zmk_magdial_slot_binding sb = state.slots[slot];
+    k_spin_unlock(&state_lock, key);
+
+    if (version == 0) {
         const struct magdial_default *def = &magdial_defaults[slot];
         if (!zmk_behavior_get_binding(def->behavior_name)) {
             return false;
@@ -109,28 +125,31 @@ bool zmk_magdial_resolve_slot(enum zmk_magdial_slot slot, struct zmk_behavior_bi
         return true;
     }
 
-    const struct zmk_magdial_slot_binding *sb = &state.slots[slot];
-    if (sb->local_id == 0) {
+    if (sb.local_id == 0) {
         return false;
     }
 
-    const char *name = zmk_behavior_find_behavior_name_from_local_id(sb->local_id);
+    const char *name = zmk_behavior_find_behavior_name_from_local_id(sb.local_id);
     if (!name) {
-        LOG_WRN("magdial slot %d: no behavior for stored local id %d", slot, sb->local_id);
+        LOG_WRN("magdial slot %d: no behavior for stored local id %d", slot, sb.local_id);
         return false;
     }
 
     *out = (struct zmk_behavior_binding){
         .behavior_dev = name,
-        .param1 = sb->param1,
-        .param2 = sb->param2,
+        .param1 = sb.param1,
+        .param2 = sb.param2,
     };
     return true;
 }
 
 void zmk_magdial_get_config(struct zmk_magdial_slot_binding slots[ZMK_MAGDIAL_SLOT_COUNT],
                             bool *press_enabled, uint8_t *sensitivity) {
-    if (state.version == 0) {
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
+    struct magdial_state snapshot = state;
+    k_spin_unlock(&state_lock, key);
+
+    if (snapshot.version == 0) {
         for (int i = 0; i < ZMK_MAGDIAL_SLOT_COUNT; i++) {
             zmk_behavior_local_id_t id = zmk_behavior_get_local_id(magdial_defaults[i].behavior_name);
             if (id == UINT16_MAX) {
@@ -144,31 +163,41 @@ void zmk_magdial_get_config(struct zmk_magdial_slot_binding slots[ZMK_MAGDIAL_SL
             }
         }
     } else {
-        memcpy(slots, state.slots, sizeof(state.slots));
+        memcpy(slots, snapshot.slots, sizeof(snapshot.slots));
     }
 
-    *press_enabled = state.press_enabled;
-    *sensitivity = MIN(state.sensitivity, ZMK_MAGDIAL_SENSITIVITY_MAX);
+    *press_enabled = snapshot.press_enabled;
+    *sensitivity = MIN(snapshot.sensitivity, ZMK_MAGDIAL_SENSITIVITY_MAX);
 }
 
 int zmk_magdial_set_config(const struct zmk_magdial_slot_binding slots[ZMK_MAGDIAL_SLOT_COUNT],
                            bool press_enabled, uint8_t sensitivity) {
-    state.version = MAGDIAL_STATE_VERSION;
-    memcpy(state.slots, slots, sizeof(state.slots));
-    state.press_enabled = press_enabled;
-    state.sensitivity = MIN(sensitivity, ZMK_MAGDIAL_SENSITIVITY_MAX);
+    struct magdial_state next = {
+        .version = MAGDIAL_STATE_VERSION,
+        .press_enabled = press_enabled,
+        .sensitivity = MIN(sensitivity, ZMK_MAGDIAL_SENSITIVITY_MAX),
+    };
+    memcpy(next.slots, slots, sizeof(next.slots));
+
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
+    state = next;
+    k_spin_unlock(&state_lock, key);
 
     magdial_apply_sensitivity();
 
-    return settings_save_one(MAGDIAL_SETTINGS_KEY, &state, sizeof(state));
+    // Persist the local copy: `state` may be rewritten by a later set while
+    // the flash write is in flight, and the save must not hold the lock.
+    return settings_save_one(MAGDIAL_SETTINGS_KEY, &next, sizeof(next));
 }
 
 int zmk_magdial_reset_settings(void) {
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
     state = (struct magdial_state){
         .version = 0,
         .sensitivity = ZMK_MAGDIAL_SENSITIVITY_DEFAULT,
         .press_enabled = true,
     };
+    k_spin_unlock(&state_lock, key);
     magdial_apply_sensitivity();
     return settings_delete(MAGDIAL_SETTINGS_KEY);
 }
@@ -202,7 +231,9 @@ static int magdial_settings_set(const char *name, size_t len, settings_read_cb r
         return 0;
     }
 
+    k_spinlock_key_t key = k_spin_lock(&state_lock);
     state = loaded;
+    k_spin_unlock(&state_lock, key);
     return 0;
 }
 
