@@ -212,6 +212,68 @@ exit:
     return 0;
 }
 
+// Best-effort variant for pushed notifications. Unlike responses (always
+// sent from the RPC thread), notifications can be raised from the SYSTEM
+// WORKQUEUE (backlight/audio state events fired by keymap behaviors) — the
+// same thread that runs the GATT drain work. That thread must never block on
+// the transport mutex (held across a whole streamed response by the RPC
+// thread) nor enter the tx writer with insufficient ring space (it spins
+// until the drain work — which we would be blocking — frees space). Either
+// would deadlock the workqueue against its own drain and kill all input.
+// Under pressure the notification is dropped instead: a client that misses
+// one re-syncs on its next fetch, and every connect re-fetches state.
+static int send_notification(const zmk_studio_Response *resp) {
+    if (k_mutex_lock(&rpc_transport_mutex, K_NO_WAIT) < 0) {
+        LOG_WRN("Dropping notification: transport busy");
+        return -EBUSY;
+    }
+
+    int ret = 0;
+
+    if (!selected_transport) {
+        goto exit;
+    }
+
+    size_t encoded_size = 0;
+    if (!pb_get_encoded_size(&encoded_size, &zmk_studio_Response_msg, resp)) {
+        ret = -EINVAL;
+        goto exit;
+    }
+
+    // Worst case every payload byte needs an escape, plus SOF/EOF.
+    if (ring_buf_space_get(&rpc_tx_buf) < (2 * encoded_size + 2)) {
+        LOG_WRN("Dropping notification: tx buffer full");
+        ret = -ENOSPC;
+        goto exit;
+    }
+
+    void *user_data = selected_transport->tx_user_data ? selected_transport->tx_user_data() : NULL;
+
+    pb_ostream_t stream = pb_ostream_for_tx_buf(user_data);
+
+    uint8_t framing_byte = FRAMING_SOF;
+    ring_buf_put(&rpc_tx_buf, &framing_byte, 1);
+
+    selected_transport->tx_notify(&rpc_tx_buf, 1, false, user_data);
+
+    if (!pb_encode(&stream, &zmk_studio_Response_msg, resp)) {
+#if !IS_ENABLED(CONFIG_NANOPB_NO_ERRMSG)
+        LOG_ERR("Failed to encode the message %s", stream.errmsg);
+#endif // !IS_ENABLED(CONFIG_NANOPB_NO_ERRMSG)
+        ret = -EINVAL;
+        goto exit;
+    }
+
+    framing_byte = FRAMING_EOF;
+    ring_buf_put(&rpc_tx_buf, &framing_byte, 1);
+
+    selected_transport->tx_notify(&rpc_tx_buf, 1, true, user_data);
+
+exit:
+    k_mutex_unlock(&rpc_transport_mutex);
+    return ret;
+}
+
 static void rpc_main(void) {
     for (;;) {
         pb_istream_t stream = pb_istream_for_rx_ring_buf();
@@ -325,7 +387,7 @@ static int studio_rpc_listener_cb(const zmk_event_t *eh) {
         zmk_studio_Response resp = zmk_studio_Response_init_zero;
         resp.which_type = zmk_studio_Response_notification_tag;
         resp.type.notification = rpc_notify->notification;
-        send_response(&resp);
+        send_notification(&resp);
         return ZMK_EV_EVENT_BUBBLE;
     }
 

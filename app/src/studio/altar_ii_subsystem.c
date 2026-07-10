@@ -67,6 +67,12 @@ ZMK_RPC_SUBSYSTEM_HANDLER(altar_ii, als_get_state, ZMK_STUDIO_RPC_HANDLER_SECURE
 ZMK_RPC_SUBSYSTEM_HANDLER(altar_ii, als_set_state, ZMK_STUDIO_RPC_HANDLER_SECURED);
 ZMK_RPC_SUBSYSTEM_HANDLER(altar_ii, play_indicator, ZMK_STUDIO_RPC_HANDLER_SECURED);
 
-static int altar_ii_event_mapper(const zmk_event_t *eh, zmk_studio_Notification *n) { return 0; }
+// Altar II has no notifications; the mapper must DECLINE foreign events —
+// the shared studio_rpc listener treats >= 0 as "mapped" and stops
+// iterating, so the old `return 0` stub swallowed other subsystems'
+// notifications (backlight/audio state pushes) depending on link order.
+static int altar_ii_event_mapper(const zmk_event_t *eh, zmk_studio_Notification *n) {
+    return -ENOTSUP;
+}
 
 ZMK_RPC_EVENT_MAPPER(altar_ii, altar_ii_event_mapper);
