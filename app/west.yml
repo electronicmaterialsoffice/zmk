@@ -39,7 +39,7 @@ manifest:
       path: modules/lib/gui/lvgl
       remote: zmkfirmware
     - name: zmk-studio-messages
-      revision: sanctuary/v0.0.1
+      revision: sanctuary/configurable-device-peripherals
       path: modules/msgs/zmk-studio-messages
       remote: electronicmaterialsoffice
   group-filter: [+optional]
